@@ -6,6 +6,8 @@
 
 > **本项目的全部代码由 AI 生成。** 从游戏逻辑、物理、UI 到模型、贴图与音效，均由 AI 在对话中编写或程序化生成，无人工手写代码。
 
+![游戏截图](docs/screenshot.jpg)
+
 ---
 
 ## 游戏内容
@@ -63,7 +65,7 @@ pnpm preview    # 预览构建产物
 
 ## 技术栈
 
-| | |
+| 项目 | 技术 |
 |---|---|
 | 渲染 | [Three.js](https://threejs.org/) 0.170 |
 | 物理 | [cannon-es](https://github.com/pmndrs/cannon-es) 0.20 |
