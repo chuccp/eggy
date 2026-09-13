@@ -41,6 +41,13 @@ export class HUD {
           background: rgba(255,255,255,0.2); border-radius: 4px;
           padding: 1px 6px; font-family: monospace; font-size: 12px;
         }
+        .fps-display {
+          position: absolute; bottom: 20px; left: 20px;
+          background: rgba(0,0,0,0.3); backdrop-filter: blur(4px);
+          border-radius: 10px; padding: 6px 12px;
+          color: rgba(255,255,255,0.75); font-size: 12px;
+          font-family: monospace; font-variant-numeric: tabular-nums;
+        }
         .egg-count {
           position: absolute; top: 20px; right: 20px;
           background: rgba(255,215,0,0.3); backdrop-filter: blur(4px);
@@ -92,6 +99,7 @@ export class HUD {
       </div>
       <div class="egg-count" id="egg-count">🥚 0 / 3</div>
       <div class="coin-display" id="coin-display">💰 100</div>
+      <div class="fps-display" id="fps-display">-- FPS</div>
       <div class="controls-hint">
         <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> 移动 &nbsp;
         <kbd>Space</kbd> 跳跃 &nbsp;
@@ -166,6 +174,11 @@ export class HUD {
       el.classList.add('bump');
       setTimeout(() => el.classList.remove('bump'), 200);
     }
+  }
+
+  updateFPS(fps: number) {
+    const el = this.container.querySelector('#fps-display');
+    if (el) el.textContent = `${Math.round(fps)} FPS`;
   }
 
   showMessage(text: string, duration = 2000) {

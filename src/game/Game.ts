@@ -53,6 +53,8 @@ export class Game {
   private butterflyManager: ButterflyManager;
   private fallingLeaves: FallingLeaves;
   private eggsFound = 0;
+  private fpsAccum = 0;
+  private fpsFrames = 0;
   private clock = new THREE.Clock();
   private running = false;
   private hud: HUD | null = null;
@@ -456,7 +458,18 @@ export class Game {
     if (!this.running) return;
     requestAnimationFrame(this.animate);
 
-    const dt = Math.min(this.clock.getDelta(), 0.05);
+    // Physics wants a clamped step; the FPS readout needs the real one.
+    const rawDt = this.clock.getDelta();
+    const dt = Math.min(rawDt, 0.05);
+
+    // FPS readout, resampled twice a second
+    this.fpsAccum += rawDt;
+    this.fpsFrames++;
+    if (this.fpsAccum >= 0.5) {
+      this.hud?.updateFPS(this.fpsFrames / this.fpsAccum);
+      this.fpsAccum = 0;
+      this.fpsFrames = 0;
+    }
 
     // Poll gamepad state
     this.input.pollGamepad();
