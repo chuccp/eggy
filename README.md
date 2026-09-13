@@ -88,21 +88,6 @@ src/
 └── utils/               颜色与数学工具
 ```
 
-## 部署
-
-推送到 `v*` 格式的标签即会自动构建并发布到 GitHub Pages：
-
-```bash
-git tag v1.0.0
-git push origin v1.0.0
-```
-
-工作流见 [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml)。首次在别处部署时，需在仓库 **Settings → Pages** 将 Source 设为 **GitHub Actions**，并在 **Settings → Environments → github-pages** 的部署分支/标签规则中允许标签（否则标签触发的部署会被环境规则拒绝）。
-
-## 开发状态
-
-核心功能已完成，详细的代码审查与改进清单见 [`IMPROVEMENTS.md`](IMPROVEMENTS.md)。
-
 ## 许可
 
 [Apache License 2.0](LICENSE)
