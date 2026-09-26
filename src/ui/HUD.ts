@@ -54,6 +54,14 @@ export class HUD {
           border-radius: 20px; padding: 8px 16px;
           color: #FFD700; font-size: 16px; font-weight: 700;
         }
+        .pet-status {
+          position: absolute; top: 152px; left: 20px;
+          background: rgba(255,175,205,0.3); backdrop-filter: blur(4px);
+          border-radius: 20px; padding: 6px 14px;
+          color: #FF6B9D; font-size: 13px; font-weight: 700;
+          border: 1px solid rgba(255,140,180,0.35);
+          white-space: nowrap;
+        }
         .coin-display {
           position: absolute; top: 60px; right: 20px;
           background: rgba(255,215,0,0.2); backdrop-filter: blur(4px);
@@ -99,6 +107,7 @@ export class HUD {
       </div>
       <div class="egg-count" id="egg-count">🥚 0 / 3</div>
       <div class="coin-display" id="coin-display">💰 100</div>
+      <div class="pet-status" id="pet-status">🐱 喵喵 ❤️ 0/100</div>
       <div class="fps-display" id="fps-display">-- FPS</div>
       <div class="controls-hint">
         <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> 移动 &nbsp;
@@ -179,6 +188,11 @@ export class HUD {
   updateFPS(fps: number) {
     const el = this.container.querySelector('#fps-display');
     if (el) el.textContent = `${Math.round(fps)} FPS`;
+  }
+
+  updatePetStatus(name: string, affection: number, max = 100) {
+    const el = this.container.querySelector('#pet-status');
+    if (el) el.textContent = `🐱 ${name} ❤️ ${affection}/${max}`;
   }
 
   showMessage(text: string, duration = 2000) {

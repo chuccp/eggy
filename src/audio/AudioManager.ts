@@ -146,6 +146,27 @@ export function playGreeting() {
   playTone(554, 0.2, 'sine', 0.1, 0.12);
 }
 
+// Pet meow - pitch slides up then falls back down
+export function playMeow() {
+  const ctx = getCtx();
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = 'triangle';
+  const t = ctx.currentTime;
+  osc.frequency.setValueAtTime(620, t);
+  osc.frequency.exponentialRampToValueAtTime(920, t + 0.08);
+  osc.frequency.exponentialRampToValueAtTime(470, t + 0.34);
+  gain.gain.setValueAtTime(0, t);
+  gain.gain.linearRampToValueAtTime(0.13, t + 0.04);
+  gain.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
+  osc.connect(gain);
+  gain.connect(getMaster());
+  osc.start(t);
+  osc.stop(t + 0.45);
+  // A breathy overtone on top makes it read as a meow rather than a beep
+  playTone(1400, 0.12, 'sine', 0.03, 0.02);
+}
+
 // ===================== Voice (speech synthesis) =====================
 // NPCs actually talk using the browser's built-in TTS — no audio files to ship,
 // and the voice follows the same master volume as the rest of the game.

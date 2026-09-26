@@ -32,6 +32,10 @@ export class EggCharacter {
   private flapPhase = 0;
   private flapBoost = 0;
 
+  // Petting gesture: reach out with the right arm and stroke
+  private petTimer = 0;
+  private static readonly PET_DURATION = 1.2;
+
   // Lying on a bed
   private lying = false;
   private lieProgress = 0;
@@ -328,6 +332,10 @@ export class EggCharacter {
     // Wings animate in every pose so they never freeze mid-beat
     this.updateWings(dt);
 
+    // Petting gesture timer (the pose is applied further down, after the walk cycle)
+    const petting = this.petTimer > 0;
+    if (petting) this.petTimer -= dt;
+
     // Lying on a bed
     if (this.lying) {
       this.lieProgress = lerp(this.lieProgress, 1, dt * 4);
@@ -420,6 +428,21 @@ export class EggCharacter {
       this.group.position.y = this.position.y;
     }
 
+    // --- Petting gesture: overrides the arms so it reads over any walk/idle pose ---
+    if (petting) {
+      const t = 1 - Math.max(this.petTimer, 0) / EggCharacter.PET_DURATION;
+      const reach = Math.sin(Math.min(t * 2.2, 1) * Math.PI * 0.5); // 弯腰伸手
+      const stroke = Math.sin(t * Math.PI * 4);                      // 来回摸两下
+      this.body.rotation.x = 0.18 * reach;
+      this.rightArm.position.set(0.3, -0.2 + stroke * 0.05, -0.3 - 0.12 * reach);
+      this.rightArm.scale.setScalar(1 + stroke * 0.07);
+      this.leftArm.position.z = -0.05;
+    } else if (Math.abs(this.rightArm.position.x - 0.58) > 0.0005) {
+      // 摸完把手收回去（y/z 由走路的摆动接管）
+      this.rightArm.position.x = lerp(this.rightArm.position.x, 0.58, dt * 8);
+      this.rightArm.scale.setScalar(lerp(this.rightArm.scale.x, 1, dt * 8));
+    }
+
     this.updateFace(dt, isMoving);
 
     // Squash & stretch (for jumping/landing)
@@ -474,6 +497,11 @@ export class EggCharacter {
       this.rightHighlight.position.x = EggCharacter.EYE_HL_BASE_X + this.eyeTargetX;
       this.rightHighlight.position.y = EggCharacter.EYE_HL_BASE_Y + this.eyeTargetY;
     }
+  }
+
+  /** Play the petting gesture: reach out and stroke a few times. */
+  startPet() {
+    this.petTimer = EggCharacter.PET_DURATION;
   }
 
   onLand() {

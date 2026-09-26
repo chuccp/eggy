@@ -15,6 +15,8 @@ interface SaveData {
     equipped: { hat?: string; face?: string; back?: string; wings?: string; held?: string };
   };
   playerPos: { x: number; y: number; z: number };
+  /** Optional so saves written before the pet system still load. */
+  pet?: { affection: number };
 }
 
 export class SaveManager {
@@ -28,6 +30,7 @@ export class SaveManager {
     eggsFound: number,
     playerPos: { x: number; y: number; z: number },
     eggsCollected: number[] = [],
+    petAffection = 0,
   ) {
     const items: { id: string; count: number }[] = [];
     for (const [id, item] of inventory.items) {
@@ -48,6 +51,7 @@ export class SaveManager {
       eggsCollected,
       inventory: { items, equipped },
       playerPos: { x: playerPos.x, y: playerPos.y, z: playerPos.z },
+      pet: { affection: petAffection },
     };
 
     try {
@@ -76,7 +80,12 @@ export class SaveManager {
     data: SaveData,
     currency: CurrencySystem,
     inventory: Inventory,
-  ): { eggsFound: number; eggsCollected: number[]; playerPos: { x: number; y: number; z: number } } {
+  ): {
+    eggsFound: number;
+    eggsCollected: number[];
+    playerPos: { x: number; y: number; z: number };
+    petAffection: number;
+  } {
     // Restore coins
     currency.coins = data.coins;
 
@@ -98,6 +107,7 @@ export class SaveManager {
       // Older saves have no per-egg data; fall back to "the first N are gone"
       eggsCollected: data.eggsCollected ?? [],
       playerPos: data.playerPos,
+      petAffection: data.pet?.affection ?? 0,
     };
   }
 
@@ -125,11 +135,12 @@ export class SaveManager {
     eggsFound: number,
     playerPos: { x: number; y: number; z: number },
     eggsCollected: number[] = [],
+    petAffection = 0,
   ) {
     this.autoSaveTimer += dt;
     if (this.autoSaveTimer >= this.autoSaveInterval) {
       this.autoSaveTimer = 0;
-      this.save(currency, inventory, eggsFound, playerPos, eggsCollected);
+      this.save(currency, inventory, eggsFound, playerPos, eggsCollected, petAffection);
     }
   }
 }

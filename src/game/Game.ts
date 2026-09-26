@@ -10,6 +10,7 @@ import { WorldProps } from '../world/Props';
 import { NPCManager, NPC_RADIUS } from '../world/NPC';
 import { Houses } from '../world/Houses';
 import { BirdManager } from '../world/Birds';
+import { PetManager, MAX_AFFECTION } from '../world/Pets';
 import { TreasureChest, TreasureChestManager } from '../world/TreasureChest';
 import { CurrencySystem, ShopUI, type ShopItem } from '../world/Shop';
 import { Inventory, InventoryUI, createEquipMesh, EQUIP_DEFS } from '../world/Inventory';
@@ -17,7 +18,7 @@ import { WildPickupManager } from '../world/WildPickups';
 import { PushableBalls } from '../world/PushableBalls';
 import { ShopDisplayManager } from '../world/ShopDisplay';
 import { PauseMenu } from '../ui/PauseMenu';
-import { playJump, playLand, playCollect, playMagic, playChestOpen, playPurchase, playGreeting, playSplash, playSwingPush, playBounce, playFlap, startBGM, setMasterVolume, setBGMVolume, startAmbience, setAmbientGains, speak, stopSpeaking } from '../audio/AudioManager';
+import { playJump, playLand, playCollect, playMagic, playChestOpen, playPurchase, playGreeting, playMeow, playSplash, playSwingPush, playBounce, playFlap, startBGM, setMasterVolume, setBGMVolume, startAmbience, setAmbientGains, speak, stopSpeaking } from '../audio/AudioManager';
 import { SaveManager } from './SaveManager';
 import { PhysicsWorld } from './Physics';
 import { worldPos } from '../utils/math';
@@ -38,6 +39,7 @@ export class Game {
   private npcManager: NPCManager;
   private houses: Houses;
   private birdManager: BirdManager;
+  private petManager: PetManager;
   private treasureManager: TreasureChestManager;
   private currency: CurrencySystem;
   private shopUI: ShopUI;
@@ -108,6 +110,13 @@ export class Game {
     // World props
     this.props = new WorldProps(this.terrain.getHeight);
     this.props.addToScene(this.sceneManager.scene);
+
+    // Pets: the player's own cat follows them, wild pets roam the map
+    this.petManager = new PetManager(this.terrain.getHeight, {
+      center: this.props.waterCenter,
+      radius: this.props.waterRadius,
+    });
+    this.petManager.addToScene(this.sceneManager.scene);
 
     // Pushable balls in the plaza (real physics bodies on the heightfield)
     this.pushableBalls = new PushableBalls(this.physics, this.terrain.getHeight, [
@@ -208,7 +217,10 @@ export class Game {
         playMagic();
         if (this.hud) this.hud.showMessage('躺下休息一会儿吧~', 2500);
       } else {
-        this.saveManager.save(this.currency, this.inventory, this.eggsFound, this.character.position, this.collectedEggIndices());
+        this.saveManager.save(
+          this.currency, this.inventory, this.eggsFound, this.character.position,
+          this.collectedEggIndices(), this.petManager.affection,
+        );
         if (this.hud) this.hud.showMessage('休息好了，精神满满！', 2000);
       }
     };
@@ -229,6 +241,18 @@ export class Game {
     this.controls.onNPCInteract = (message) => {
       playGreeting();
       speak(message);
+    };
+
+    this.controls.onPetInteract = (pet) => {
+      // 转身面向宠物，伸手摸几下
+      this.controls.faceTowards(pet.position.x, pet.position.z);
+      this.character.startPet();
+      const { message } = this.petManager.pet(pet);
+      playMeow();
+      if (this.hud) {
+        this.hud.showMessage(message, 2200);
+        this.hud.updatePetStatus(this.petManager.petName, this.petManager.affection, MAX_AFFECTION);
+      }
     };
 
     // Pause menu
@@ -263,6 +287,7 @@ export class Game {
     if (savedData) {
       const restored = this.saveManager.applyToGame(savedData, this.currency, this.inventory);
       this.eggsFound = restored.eggsFound;
+      this.petManager.setAffection(restored.petAffection);
       // Hide golden eggs that were already picked up, so reloading can't farm them
       this.props.goldenEggs.forEach((egg, i) => {
         const taken = restored.eggsCollected.includes(i)
@@ -354,7 +379,10 @@ export class Game {
 
     // Save on page unload (dispose is handled by Game.dispose / the exit flow)
     this.onBeforeUnload = () => {
-      this.saveManager.save(this.currency, this.inventory, this.eggsFound, this.character.position, this.collectedEggIndices());
+      this.saveManager.save(
+        this.currency, this.inventory, this.eggsFound, this.character.position,
+        this.collectedEggIndices(), this.petManager.affection,
+      );
     };
     window.addEventListener('beforeunload', this.onBeforeUnload);
   }
@@ -396,6 +424,7 @@ export class Game {
   setHUD(hud: HUD) {
     this.hud = hud;
     this.hud.updateCoins(this.currency.coins);
+    this.hud.updatePetStatus(this.petManager.petName, this.petManager.affection, MAX_AFFECTION);
     // Clicking the 🎒 icon opens the inventory (also closes the pause menu if it's up)
     this.hud.onToggleInventory = () => {
       if (this.pauseMenu.isVisible()) this.pauseMenu.hide();
@@ -491,6 +520,7 @@ export class Game {
       this.props,
       this.houses,
       this.npcManager,
+      this.petManager,
     );
 
     const push = this.npcManager.resolveCollisions(this.character.position, 0.45);
@@ -510,6 +540,7 @@ export class Game {
     );
     this.terrain.updateTrees(dt, this.character.position);
     this.npcManager.update(dt, this.terrain.getHeight);
+    this.petManager.update(dt, this.character.position, this.character.onGround);
     this.birdManager.update(dt);
     this.treasureManager.update(dt, this.character.position);
 
@@ -519,7 +550,10 @@ export class Game {
     this.fallingLeaves.update(dt);
 
     // Auto-save every 30s
-    this.saveManager.updateAutoSave(dt, this.currency, this.inventory, this.eggsFound, this.character.position, this.collectedEggIndices());
+    this.saveManager.updateAutoSave(
+      dt, this.currency, this.inventory, this.eggsFound, this.character.position,
+      this.collectedEggIndices(), this.petManager.affection,
+    );
 
     // Wild equipment pickups
     for (const drop of this.wildPickups.update(dt, this.character.position)) {
@@ -550,7 +584,10 @@ export class Game {
         }
         if (this.onEggFound) this.onEggFound();
         // Save immediately on egg collection
-        this.saveManager.save(this.currency, this.inventory, this.eggsFound, this.character.position, this.collectedEggIndices());
+        this.saveManager.save(
+          this.currency, this.inventory, this.eggsFound, this.character.position,
+          this.collectedEggIndices(), this.petManager.affection,
+        );
       }
     }
 

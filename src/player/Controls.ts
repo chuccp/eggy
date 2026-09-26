@@ -10,6 +10,7 @@ import type { Cannon } from '../world/InteractiveObjects';
 import type { ShopDisplayManager, ShopDisplay, ShopCounter } from '../world/ShopDisplay';
 import type { Houses, BuiltHouse, BedSpot } from '../world/Houses';
 import type { NPCManager } from '../world/NPC';
+import type { Pet, PetManager } from '../world/Pets';
 import type { PhysicsWorld } from '../game/Physics';
 
 const WALK_SPEED = 5;
@@ -76,6 +77,7 @@ export class Controls {
   onInventoryKey?: (key: string) => boolean;
   onToggleInventory?: () => void;
   onNPCInteract?: (message: string) => void;
+  onPetInteract?: (pet: Pet) => void;
   onSleep?: (sleeping: boolean) => void;
   onCannonFire?: () => void;
   onBuyDisplay?: (display: ShopDisplay) => void;
@@ -120,6 +122,15 @@ export class Controls {
     this.camera.setRestingMode(false);
   }
 
+  /** Turn the character toward a world position (e.g. the pet being petted). */
+  faceTowards(x: number, z: number) {
+    const dx = x - this.character.position.x;
+    const dz = z - this.character.position.z;
+    if (Math.abs(dx) > 0.01 || Math.abs(dz) > 0.01) {
+      this.targetRotation = Math.atan2(dx, dz) + Math.PI;
+    }
+  }
+
   update(
     dt: number,
     getHeightAt: (x: number, z: number) => number,
@@ -128,6 +139,7 @@ export class Controls {
     worldProps: WorldProps,
     houses: Houses,
     npcManager?: NPCManager,
+    petManager?: PetManager,
   ) {
     const { character, camera, input } = this;
     this.currentColliders = colliders;
@@ -244,6 +256,10 @@ export class Controls {
     // NPC proximity check
     const nearNPC = npcManager?.findNearNPC(character.position);
 
+    // Pet proximity check — lowest priority, so a pet sitting next to a shop
+    // counter or an NPC never steals their prompt.
+    const nearPet = petManager?.findNearPet(character.position);
+
     if (nearInteract) {
       this.nearbyInteractable = nearInteract;
     } else if (nearNPC) {
@@ -262,6 +278,8 @@ export class Controls {
       this.nearbyInteractable = { label: this.isLying ? '按 E 起来' : '按 E 上床睡觉', type: 'bed' };
     } else if (nearBench) {
       this.nearbyInteractable = { label: this.isSitting ? '按 E 站起来' : '按 E 坐下休息', type: 'bench' };
+    } else if (nearPet) {
+      this.nearbyInteractable = { label: nearPet.interactLabel, type: 'pet' };
     }
 
     // Handle E key press
@@ -360,6 +378,8 @@ export class Controls {
         this.isSitting = !this.isSitting;
         character.setSitting(this.isSitting);
         camera.setRestingMode(this.isSitting);
+      } else if (nearPet) {
+        this.onPetInteract?.(nearPet);
       }
     }
 
